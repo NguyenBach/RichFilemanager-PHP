@@ -19,6 +19,7 @@ abstract class BaseStorage
 {
     const STORAGE_S3_NAME = 's3';
     const STORAGE_LOCAL_NAME = 'local';
+    const STORAGE_FTP_NAME = 'ftp';
     const SEARCH_MODE_START_WITH = 'START_WITH';
     const SEARCH_MODE_WILDCARD = 'WILDCARD';
 
