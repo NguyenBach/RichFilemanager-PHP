@@ -7,6 +7,7 @@
 namespace RFM\Repository\FTP;
 
 
+use RFM\Factory\Factory;
 use RFM\Repository\BaseItemModel;
 use RFM\Repository\BaseStorage;
 use RFM\Repository\ItemData;
@@ -33,6 +34,8 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
 
     private $parent;
 
+    private $thumbnail;
+
     /**
      * ItemModel constructor.
      * @param $path
@@ -45,7 +48,7 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
         $this->absolutePath = $this->storage->getAbsolutePath($path);
         $this->permission = $this->storage->getPermission($this->absolutePath);
         $this->isExists = $this->storage->isFileExists($this->absolutePath);
-
+        $this->isDir = $this->storage->isDir($this->absolutePath);
     }
 
     public function getRelativePath()
@@ -60,7 +63,7 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
 
     public function getDynamicPath()
     {
-        return $this->absolutePath;
+        return $this->relativePath;
     }
 
     public function getPermission()
@@ -82,7 +85,7 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
 
     public function isDirectory()
     {
-        return $this->storage->isDir($this->relativePath);
+        return $this->storage->isDir($this->absolutePath);
     }
 
     /**
@@ -282,7 +285,11 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
 
     public function thumbnail()
     {
-        // TODO: Implement thumbnail() method.
+        if (is_null($this->thumbnail)) {
+            $this->thumbnail = (new Factory())->createThumbnailModel($this);
+        }
+
+        return $this->thumbnail;
     }
 
     public function createThumbnail()
@@ -306,7 +313,7 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
      * @return ItemData
      * @throws \Exception
      */
-    private function compileData()
+    public function compileData()
     {
         $data = new ItemData();
         $data->pathRelative = $this->relativePath;
@@ -337,15 +344,8 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
             $data->imageData['isThumbnail'] = true;
             $data->imageData['pathOriginal'] = $this->getOriginalPath();
             $data->imageData['pathThumbnail'] = $this->getThumbnailPath();
-
-            if ($data->isReadable && $data->size > 0) {
-                list($width, $height, $type, $attr) = getimagesize($this->absolutePath);
-            } else {
-                list($width, $height) = [0, 0];
-            }
-
-            $data->imageData['width'] = $width;
-            $data->imageData['height'] = $height;
+            $data->imageData['width'] = 200;
+            $data->imageData['height'] = 200;
         }
 
         return $data;

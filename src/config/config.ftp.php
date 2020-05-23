@@ -2,9 +2,9 @@
 /**
  *  RichFilemanager configuration file for Local storage.
  *
- *  @license     MIT License
- *  @author      Pavel Solomienko <https://github.com/servocoder/>
- *  @copyright   Authors
+ * @license     MIT License
+ * @author      Pavel Solomienko <https://github.com/servocoder/>
+ * @copyright   Authors
  */
 
 $config = [
@@ -257,5 +257,7 @@ $config = [
      */
     "mkdir_mode" => 0755,
 ];
+
+include_once __DIR__.'/config.mimetype.php';
 
 return $config;

@@ -57,6 +57,7 @@ class Storage extends BaseStorage implements StorageInterface
 
     public function cleanPath($string, $removeParent = false)
     {
+        $string = rtrim($string, '/');
         // replace backslashes (windows separators)
         $string = str_replace("\\", "/", $string);
         // remove multiple slashes
@@ -116,7 +117,17 @@ class Storage extends BaseStorage implements StorageInterface
 
     public function getMimeType($path)
     {
-        // TODO: Implement getMimeType() method.
+        $pathInfo = pathinfo($path);
+        if (!isset($pathInfo['extension'])) {
+            return false;
+        }
+        $mimes = $this->config('mimes');
+        $extension = strtolower($pathInfo['extension']);
+        if (isset($mimes[$extension])) {
+            return $mimes[$extension];
+        } else {
+            return '';
+        }
     }
 
     /**
@@ -172,6 +183,7 @@ class Storage extends BaseStorage implements StorageInterface
                     if ($chmod[3] == 'x' || $chmod[6] == 'x' || $chmod[9] == 'x') {
                         $permission['execute'] = true;
                     }
+                    break;
                 }
             }
         }
@@ -188,6 +200,7 @@ class Storage extends BaseStorage implements StorageInterface
     {
         $pathInfo = pathinfo($path);
         $listFiles = $this->ftp->listFiles($pathInfo['dirname']);
+        $path = $this->cleanPath($path);
         return in_array($path, $listFiles);
     }
 
@@ -214,5 +227,20 @@ class Storage extends BaseStorage implements StorageInterface
     public function listFiles($path)
     {
         return $this->ftp->listFiles($path);
+    }
+
+    public function getFtpUrl($path)
+    {
+        return $this->ftp->ftpUrl() . $path;
+    }
+
+    public function readFile($path, $output)
+    {
+        $this->ftp->readFile($path, $output);
+    }
+
+    public function rename($path, $newName)
+    {
+        return $this->ftp->rename($path, $newName);
     }
 }

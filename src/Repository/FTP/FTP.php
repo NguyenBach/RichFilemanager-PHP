@@ -96,21 +96,28 @@ class FTP
     {
         $pathInfo = pathinfo($path);
         $fileName = $pathInfo['basename'];
-        $newName = $newName . '.' . $pathInfo['extension'];
+        if (isset($pathInfo['extension'])) {
+            $newName = $newName . '.' . $pathInfo['extension'];
+        }
         $this->connect();
         ftp_chdir($this->conn, $pathInfo['dirname']);
-        return ftp_rename($this->conn, $fileName, $newName);
+        $success = ftp_rename($this->conn, $fileName, $newName);
+        if ($success) {
+            return $newName;
+        } else {
+            return false;
+        }
+    }
+
+    public function ftpUrl()
+    {
+        return "ftp://{$this->username}:{$this->password}@{$this->host}:{$this->port}";
     }
 
     public function isDir($path)
     {
-        $originalDirectory = ftp_pwd($this->conn);
-        if (@ftp_chdir($this->conn, $path)) {
-            ftp_chdir($this->conn, $originalDirectory);
-            return true;
-        } else {
-            return false;
-        }
+        $ftpPath = $this->ftpUrl() . $path;
+        return is_dir($ftpPath);
     }
 
     /**
@@ -121,6 +128,17 @@ class FTP
     {
         $this->connect();
         return ftp_mdtm($this->conn, $path);
+    }
+
+    /**
+     * @param $path
+     * @param $localFile
+     * @throws \Exception
+     */
+    public function readFile($path, $localFile)
+    {
+        $this->connect();
+        ftp_fget($this->conn, $localFile, $path, FTP_BINARY);
     }
 
 }

@@ -4,6 +4,9 @@
 namespace RFM\Api;
 
 
+use RFM\Event\Api\AfterFolderReadEvent;
+use RFM\Event\Api\AfterFolderSeekEvent;
+use RFM\Event\Api\AfterItemRenameEvent;
 use RFM\Facade\Input;
 use RFM\Facade\Log;
 use RFM\Repository\BaseStorage;
@@ -78,11 +81,9 @@ class FTPApi implements ApiInterface
      */
     public function actionReadFolder()
     {
-        $filesList = [];
         $filesPaths = [];
         $responseData = [];
         $model = new ItemModel(Input::get('path'));
-
         $model->checkPath();
         $model->checkReadPermission();
 
@@ -103,7 +104,7 @@ class FTPApi implements ApiInterface
         }
 
         // create event and dispatch it
-        $event = new ApiEvent\AfterFolderReadEvent($model->getData(), $filesPaths);
+        $event = new AfterFolderReadEvent($model->getData(), $filesPaths);
         dispatcher()->dispatch($event::NAME, $event);
 
         return $responseData;
@@ -148,7 +149,7 @@ class FTPApi implements ApiInterface
         }
 
         // create event and dispatch it
-        $event = new ApiEvent\AfterFolderSeekEvent($model->getData(), $searchString, $filesPaths);
+        $event = new AfterFolderSeekEvent($model->getData(), $searchString, $filesPaths);
         dispatcher()->dispatch($event::NAME, $event);
 
         return $responseData;
@@ -159,9 +160,36 @@ class FTPApi implements ApiInterface
         // TODO: Implement actionSaveFile() method.
     }
 
+    /**
+     * @return array
+     * @throws \Exception
+     */
     public function actionRename()
     {
-        // TODO: Implement actionRename() method.
+        $modelOld = new ItemModel(Input::get('old'));
+        $suffix = $modelOld->isDirectory() ? '/' : '';
+        $filename = Input::get('new');
+
+        // forbid to change path during rename
+        if (strrpos($filename, '/') !== false) {
+            app()->error('FORBIDDEN_CHAR_SLASH');
+        }
+
+        // check if not requesting root storage folder
+        if ($modelOld->isDirectory() && $modelOld->isRoot()) {
+            app()->error('NOT_ALLOWED');
+        }
+
+
+        $newPath = $this->storage->rename($modelOld->getAbsolutePath(), $filename);
+
+        $modelNew = new ItemModel($newPath);
+
+        // create event and dispatch it
+        $event = new AfterItemRenameEvent($modelNew->getData(), $modelOld->getData());
+        dispatcher()->dispatch($event::NAME, $event);
+
+        return $modelNew->compileData()->formatJsonApi();
     }
 
     public function actionCopy()
@@ -194,9 +222,24 @@ class FTPApi implements ApiInterface
         // TODO: Implement actionDownload() method.
     }
 
+    /**
+     * @param bool $thumbnail
+     * @throws \Exception
+     */
     public function actionGetImage($thumbnail)
     {
-        // TODO: Implement actionGetImage() method.
+        $modelImage = new ItemModel(Input::get('path'));
+        if ($modelImage->isDirectory()) {
+            app()->error('FORBIDDEN_ACTION_DIR');
+        }
+
+        $modelImage->checkReadPermission();
+        $mimeType = $this->storage->getMimeType($modelImage->getAbsolutePath());
+        header("Content-Type: {$mimeType}");
+        header("Content-Length: " . $this->storage->getFileSize($modelImage->getAbsolutePath()));
+        $ouput = fopen('php://output', 'r+');
+        $this->storage->readFile($modelImage->getAbsolutePath(), $ouput);
+        exit;
     }
 
     public function actionReadFile()
