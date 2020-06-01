@@ -16,7 +16,6 @@ function container($make = null, $parameters = [])
     if (is_null($make)) {
         return Container::getInstance();
     }
-
     return Container::getInstance()->make($make, $parameters);
 }
 

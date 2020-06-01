@@ -117,7 +117,7 @@ class Application
      */
     public function getStorage($name)
     {
-        if(!isset(static::$storageRegistry[$name])) {
+        if (!isset(static::$storageRegistry[$name])) {
             throw new \Exception("Storage with name \"{$name}\" is not set.");
         }
 
@@ -169,16 +169,16 @@ class Application
     /**
      * Get the base path for the application.
      *
-     * @param  string|null  $path
+     * @param string|null $path
      * @return string
      */
     public function basePath($path = null)
     {
         if (isset($this->basePath)) {
-            return $this->basePath.($path ? '/'.$path : $path);
+            return $this->basePath . ($path ? '/' . $path : $path);
         }
 
-        $this->basePath = realpath(getcwd().'/../');
+        $this->basePath = realpath(getcwd() . '/../');
 
         return $this->basePath($path);
     }
@@ -262,16 +262,13 @@ class Application
         if (!($this->api instanceof ApiInterface)) {
             throw new \Exception("API has not been set.");
         }
-
         $response = null;
         $method = request()->getMethod();
         $mode = request()->get('mode');
-
         if (empty($mode)) {
             $this->error('MODE_ERROR');
         }
-
-        switch($mode) {
+        switch ($mode) {
             case 'initiate':
                 if ($method === 'GET') {
                     $response = $this->api->actionInitiate();
@@ -402,7 +399,7 @@ class Application
 
         header('Content-Type: application/json');
         header('HTTP/1.1 500 Internal Server Error');
-        
+
         echo json_encode([
             'errors' => [$error_object],
         ]);

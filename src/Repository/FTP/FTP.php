@@ -4,6 +4,8 @@
 namespace RFM\Repository\FTP;
 
 
+use function RFM\app;
+
 class FTP
 {
     private $conn = null;
@@ -39,6 +41,7 @@ class FTP
         if (!$login) {
             throw new \Exception('FTP login fail');
         }
+        ftp_pasv($this->conn, TRUE);
         return $login;
     }
 
@@ -83,7 +86,7 @@ class FTP
     public function rawListFiles($dir)
     {
         $this->connect();
-        return ftp_rawlist($this->conn, $dir);
+        return ftp_rawlist($this->conn, $dir, true);
     }
 
     /**
@@ -96,17 +99,19 @@ class FTP
     {
         $pathInfo = pathinfo($path);
         $fileName = $pathInfo['basename'];
-        if (isset($pathInfo['extension'])) {
-            $newName = $newName . '.' . $pathInfo['extension'];
-        }
         $this->connect();
         ftp_chdir($this->conn, $pathInfo['dirname']);
-        $success = ftp_rename($this->conn, $fileName, $newName);
-        if ($success) {
-            return $newName;
-        } else {
-            return false;
+        try {
+            if (ftp_rename($this->conn, $fileName, $newName)) {
+//                ftp_chmod($this->conn, '0755', $newName);
+                return $newName;
+            } else {
+                return false;
+            }
+        } catch (\Exception $exception) {
+            throw $exception;
         }
+
     }
 
     public function ftpUrl()
@@ -139,6 +144,56 @@ class FTP
     {
         $this->connect();
         ftp_fget($this->conn, $localFile, $path, FTP_BINARY);
+    }
+
+    public function copyFile($currentPath, $copyPath, $filename)
+    {
+        $this->connect();
+        $tempFolder = sys_get_temp_dir();
+        $localFile = $tempFolder . DIRECTORY_SEPARATOR . $filename;
+        if (ftp_get($this->conn, $localFile, $currentPath, FTP_BINARY)) {
+            if (ftp_put($this->conn, $copyPath, $localFile, FTP_BINARY)) {
+                unlink($localFile);
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param $currentPath
+     * @param $copyPath
+     * @throws \Exception
+     */
+    public function copyFolder($currentPath, $copyPath)
+    {
+        $listFile = $this->listFiles($currentPath);
+        $this->mkdir($copyPath);
+        foreach ($listFile as $file) {
+            if ($file == '.' || $file == '..') {
+                continue;
+            }
+            if (@ftp_chdir($this->conn, $file)) {
+                $folderName = pathinfo($file, PATHINFO_BASENAME);
+                ftp_chdir($this->conn, "..");
+                $copy = $copyPath . '/' . $folderName;
+                $copied = $this->copyFolder($file, $copy);
+                if (!$copied) {
+                    return false;
+                }
+            } else {
+                $filename = pathinfo($file, PATHINFO_BASENAME);
+                $copy = $copyPath . '/' . $filename;
+                $copied = $this->copyFile($file, $copy, $filename);
+                if (!$copied) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
 }

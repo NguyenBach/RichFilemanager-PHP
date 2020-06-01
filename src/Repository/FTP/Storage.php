@@ -10,6 +10,7 @@ namespace RFM\Repository\FTP;
 use RFM\Repository\BaseStorage;
 use RFM\Repository\ItemModelInterface;
 use RFM\Repository\StorageInterface;
+use function RFM\app;
 
 class Storage extends BaseStorage implements StorageInterface
 {
@@ -52,7 +53,11 @@ class Storage extends BaseStorage implements StorageInterface
         $username = $this->config('ftp.username', '');
         $password = $this->config('ftp.password', '');
         $this->ftp = new FTP($host, $username, $password, $port, $timeout);
-        $this->ftp->connect();
+        try {
+            $this->ftp->connect();
+        } catch (\Exception $e) {
+            app()->error($e->getMessage());
+        }
     }
 
     public function cleanPath($string, $removeParent = false)
@@ -112,7 +117,7 @@ class Storage extends BaseStorage implements StorageInterface
      */
     public function createFolder($target, $prototype = '', $options = '')
     {
-        return $this->ftp->mkdir($target);
+        return $this->ftp->mkdir($target->getAbsolutePath());
     }
 
     public function getMimeType($path)
@@ -147,7 +152,11 @@ class Storage extends BaseStorage implements StorageInterface
 
     public function isDir($path)
     {
-        return $this->ftp->isDir($path);
+        if ($path == $this->rootDir) {
+            return true;
+        }
+        $pathInfo = pathinfo($path);
+        return !isset($pathInfo['extension']);
     }
 
     /**
@@ -157,18 +166,24 @@ class Storage extends BaseStorage implements StorageInterface
      */
     public function getPermission($path)
     {
+        if ($path == $this->rootDir) {
+            return $permission = [
+                'read' => true,
+                'write' => true,
+                'execute' => true
+            ];
+        }
         $filePath = pathinfo($path);
         $fileList = $this->ftp->rawListFiles($filePath['dirname']);
+        if ($fileList === false) {
+            app()->error('ERROR', ["Cannot open file list"]);
+        }
         if (isset($filePath['extension'])) {
             $fileWithExtension = $filePath['filename'] . '.' . $filePath['extension'];
         } else {
             $fileWithExtension = $filePath['filename'];
         }
-        $permission = [
-            'read' => false,
-            'write' => false,
-            'execute' => false
-        ];
+        $permission = $this->getPermission($filePath['dirname']);
         foreach ($fileList as $v) {
             $vinfo = preg_split("/[\s]+/", $v, 9);
             if ($vinfo[0] !== "total") {
@@ -198,6 +213,9 @@ class Storage extends BaseStorage implements StorageInterface
 
     public function isFileExists($path)
     {
+        if ($this->rootDir == $path) {
+            return true;
+        }
         $pathInfo = pathinfo($path);
         $listFiles = $this->ftp->listFiles($pathInfo['dirname']);
         $path = $this->cleanPath($path);
@@ -242,5 +260,16 @@ class Storage extends BaseStorage implements StorageInterface
     public function rename($path, $newName)
     {
         return $this->ftp->rename($path, $newName);
+    }
+
+    public function copyFile($currentPath, $copyPath)
+    {
+        $filename = pathinfo($currentPath, PATHINFO_BASENAME);
+        return $this->ftp->copyFile($currentPath, $copyPath, $filename);
+    }
+
+    public function copyFolder($currentPath, $copyFolder)
+    {
+        return $this->ftp->copyFolder($currentPath, $copyFolder);
     }
 }

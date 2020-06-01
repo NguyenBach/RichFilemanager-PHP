@@ -49,6 +49,7 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
         $this->permission = $this->storage->getPermission($this->absolutePath);
         $this->isExists = $this->storage->isFileExists($this->absolutePath);
         $this->isDir = $this->storage->isDir($this->absolutePath);
+
     }
 
     public function getRelativePath()
@@ -200,6 +201,7 @@ class ItemModel extends BaseItemModel implements ItemModelInterface
 
     public function hasReadPermission()
     {
+        $this->permission = $this->storage->getPermission($this->absolutePath);
         return $this->permission['read'];
     }
 
