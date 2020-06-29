@@ -11,6 +11,7 @@ use RFM\Repository\BaseStorage;
 use RFM\Repository\ItemModelInterface;
 use RFM\Repository\StorageInterface;
 use function RFM\app;
+use function RFM\mime_type_by_extension;
 
 class Storage extends BaseStorage implements StorageInterface
 {
@@ -122,17 +123,7 @@ class Storage extends BaseStorage implements StorageInterface
 
     public function getMimeType($path)
     {
-        $pathInfo = pathinfo($path);
-        if (!isset($pathInfo['extension'])) {
-            return false;
-        }
-        $mimes = $this->config('mimes');
-        $extension = strtolower($pathInfo['extension']);
-        if (isset($mimes[$extension])) {
-            return $mimes[$extension];
-        } else {
-            return '';
-        }
+        return mime_type_by_extension($path);
     }
 
     /**

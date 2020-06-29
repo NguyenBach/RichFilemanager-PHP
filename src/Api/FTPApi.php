@@ -386,7 +386,12 @@ class FTPApi implements ApiInterface
         header("Content-Type: {$mimeType}");
         header("Content-Length: " . $this->storage->getFileSize($modelImage->getAbsolutePath()));
         $ouput = fopen('php://output', 'r+');
-        $this->storage->readFile($modelImage->getAbsolutePath(), $ouput);
+        try {
+            $this->storage->readFile($modelImage->getAbsolutePath(), $ouput);
+        } catch (\Exception $exception) {
+            dd($exception->getMessage());
+        }
+
         exit;
     }
 
